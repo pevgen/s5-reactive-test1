@@ -74,24 +74,11 @@ public class S5ReactiveTest1Application {
 
     @GetMapping(value = "/rr")
     public Mono<String> requestResponse() {
-//        for (int i = 0; i < ; i++) {
-//        this.jmsTemplate.convertAndSend("testQueue", "testMessage #" + (0 + 1));
-//        }
         Mono<String> mm;
-//            mm = Mono.from(jmsReactiveSource())
-//                    .timeout(Duration.ofSeconds(2), Mono.error(new RuntimeException("forced " + "failure")))
-//                    //.doAfterTerminate(() -> System.out.println("Do anything with your string" + "sdfg"))
-//                    .map(Message::getPayload)
-        mm = Mono.from(jmsReactiveSource())
+        return  Mono.from(jmsReactiveSource())
                 .map(Message::getPayload)
                 .timeout(Duration.ofSeconds(10), Mono.just("timeout"))
-//                    .timeout(Duration.ofSeconds(2), Mono.error(new TimeoutException("Timeout after " + Duration.ofSeconds(2))))
-//                    .doAfterTerminate(() -> System.out.println("Do anything with your string !!!!!"))
-
         ;
-
-        System.out.println(mm);
-        return mm;
     }
 
     @GetMapping(value = "/rr2")
@@ -103,10 +90,15 @@ public class S5ReactiveTest1Application {
                 .subscribeOn(Schedulers.elastic())  // in other thread
                 .timeout(Duration.ofSeconds(timeout), Mono.just("timeout"))  // timeout
                 ;
-//        return Mono.from(anotherSource(id))
-//                .timeout(Duration.ofSeconds(1), Mono.just("timeout"))  // timeout
-//                ;
+    }
 
+    @GetMapping(value = "/rr-exc")
+    public Mono<String> requestResponseWithExceptionHandler(@RequestParam("id") String id) {
+
+        return Mono.defer(() -> blockedSource())
+                .subscribeOn(Schedulers.elastic())  // in other thread
+                .timeout(Duration.ofSeconds(2), Mono.error(new SpecificException("specific timeout")))  // timeout
+                ;
     }
 
     SynchronousQueue<String> synchronousQueue = new SynchronousQueue();
@@ -121,9 +113,18 @@ public class S5ReactiveTest1Application {
         return Mono.just("xmlId:" + id + " \n event:" + event);
     }
 
+    public Mono<String> blockedSource() {
+        try {
+            Thread.sleep(500000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 
     @Scheduled(fixedDelay = 5000)
     public void imitateGettingResponseMessageFromResponseQueue() {
         synchronousQueue.offer("event-response:" + LocalDateTime.now());
     }
+
 }
